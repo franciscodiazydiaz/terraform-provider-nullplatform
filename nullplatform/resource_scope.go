@@ -191,7 +191,7 @@ func ScopeCreate(d *schema.ResourceData, m any) error {
 
 	d.SetId(strconv.Itoa(s.Id))
 
-	return nil //ScopeRead(d, m)
+	return ScopeRead(d, m)
 }
 
 func patchNrnForScope(scopeNrn string, d *schema.ResourceData, m any) error {
@@ -410,7 +410,7 @@ func ScopeUpdate(d *schema.ResourceData, m any) error {
 		}
 	}
 
-	return nil //ScopeRead(d, m)
+	return ScopeRead(d, m)
 }
 
 func ScopeDelete(d *schema.ResourceData, m any) error {

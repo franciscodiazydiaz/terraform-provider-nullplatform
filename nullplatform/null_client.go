@@ -44,6 +44,8 @@ type NullOps interface {
 
 	CreateParameterValue(paramId int, paramValue *ParameterValue) (*ParameterValue, error)
 	DeleteParameterValue(parameterId string, parameterValueId string) error
+
+	GetApplication(appId string) (*Application, error)
 }
 
 func (c *NullClient) GetToken() diag.Diagnostics {

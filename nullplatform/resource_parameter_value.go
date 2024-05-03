@@ -2,8 +2,6 @@ package nullplatform
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"log"
 	"reflect"
@@ -35,8 +33,8 @@ func resourceParameterValue() *schema.Resource {
 			"origin_version": {
 				Type:     schema.TypeInt,
 				Optional: true,
-				//Computed: true,
-				Default: 0,
+				Computed: true,
+				//Default: 0,
 			},
 			"nrn": {
 				Type:     schema.TypeString,
@@ -81,6 +79,8 @@ func ParameterValueCreate(d *schema.ResourceData, m any) error {
 
 	paramValue, err := nullOps.CreateParameterValue(parameterId, newParameterValue)
 
+	log.Printf("[DEBUG] Parameter Value Created with OriginID: %d", paramValue.Id)
+
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func ParameterValueCreate(d *schema.ResourceData, m any) error {
 	paramValueId := generateParameterValueID(paramValue)
 	d.SetId(paramValueId)
 
-	return nil
+	return ParameterValueRead(d, m)
 }
 
 func ParameterValueRead(d *schema.ResourceData, m any) error {
@@ -101,28 +101,29 @@ func ParameterValueRead(d *schema.ResourceData, m any) error {
 	param, err := nullOps.GetParameter(parameterId)
 	if err != nil {
 		// FIXME: Validate if error == 404
-		/*if !d.IsNewResource() {
-			log.Printf("[WARN] Parameter Value ID %s not found, removing from state", d.Id())
+		if !d.IsNewResource() {
+			log.Printf("[WARN] Parameter ID %s not found, removing value from state", d.Id())
 			d.SetId("")
 			return nil
-		}*/
+		}
 		return err
 	}
 
 	for _, item := range param.Values {
-		// -------- DEBUG
-		// Convert struct to JSON
-		jsonData, err := json.Marshal(item)
-		if err != nil {
-			return err
-		}
-		// Print JSON string
-		log.Println(string(jsonData))
-		// -------- DEBUG
-		log.Println("**********************", parameterValueId, strconv.Itoa(item.Id))
-
 		if parameterValueId == generateParameterValueID(item) {
 			parameterValue = item
+
+			// -------- DEBUG
+			// Convert struct to JSON
+			jsonData, err := json.Marshal(item)
+			if err != nil {
+				return err
+			}
+			// Print JSON string
+			//log.Println(string(jsonData))
+			// -------- DEBUG
+			log.Printf("[DEBUG] Found Parameter Value ID: %s, %s", parameterValueId, string(jsonData))
+
 			break
 		}
 	}
@@ -190,7 +191,7 @@ func ParameterValueUpdate(d *schema.ResourceData, m any) error {
 			return err
 		}
 		// Print JSON string
-		log.Println("****************", string(jsonData))
+		log.Println("[DEBUG] Creating new Parameter Value version: ", string(jsonData))
 		// -------- DEBUG
 		//d.Set("new_id", paramValue.Id)
 		paramValueId := generateParameterValueID(paramValue)
@@ -211,11 +212,11 @@ func ParameterValueDelete(d *schema.ResourceData, m any) error {
 	param, err := nullOps.GetParameter(parameterId)
 	if err != nil {
 		// FIXME: Validate if error == 404
-		/*if !d.IsNewResource() {
-			log.Printf("[WARN] Parameter Value ID %s not found, removing from state", d.Id())
+		if !d.IsNewResource() {
+			log.Printf("[WARN] Parameter ID %s not found, removing value from state", d.Id())
 			d.SetId("")
 			return nil
-		}*/
+		}
 		return err
 	}
 
@@ -253,25 +254,4 @@ func ParameterValueDelete(d *schema.ResourceData, m any) error {
 	d.SetId("")
 
 	return nil
-}
-
-func generateParameterValueID(value *ParameterValue) string {
-	var concatenatedString string
-
-	// Concatenate all key-value pairs from the map
-	for key, value := range value.Dimensions {
-		concatenatedString += key + ":" + value + ";"
-	}
-
-	concatenatedString += value.Nrn + ";"
-
-	// Hash the concatenated string using SHA-256
-	hash := sha256.New()
-	hash.Write([]byte(concatenatedString))
-	hashBytes := hash.Sum(nil)
-
-	// Convert the hash bytes to a hexadecimal string
-	hashString := hex.EncodeToString(hashBytes)
-
-	return hashString
 }

@@ -52,7 +52,7 @@ func resourceParameter() *schema.Resource {
 			},
 			"destination_path": {
 				Type:     schema.TypeString,
-				Default:  "",
+				Computed: true,
 				Optional: true,
 			},
 			"secret": {
@@ -93,7 +93,7 @@ func ParameterCreate(d *schema.ResourceData, m any) error {
 
 	d.SetId(strconv.Itoa(param.Id))
 
-	return nil //ParameterRead(d, m)
+	return ParameterRead(d, m)
 }
 
 func ParameterRead(d *schema.ResourceData, m any) error {

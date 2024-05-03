@@ -2,6 +2,8 @@ package nullplatform
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -244,4 +246,25 @@ func (c *NullClient) DeleteParameterValue(parameterId string, parameterValueId s
 	}
 
 	return nil
+}
+
+func generateParameterValueID(value *ParameterValue) string {
+	var concatenatedString string
+
+	// Concatenate all key-value pairs from the map
+	for key, value := range value.Dimensions {
+		concatenatedString += key + ":" + value + ";"
+	}
+
+	concatenatedString += value.Nrn + ";"
+
+	// Hash the concatenated string using SHA-256
+	hash := sha256.New()
+	hash.Write([]byte(concatenatedString))
+	hashBytes := hash.Sum(nil)
+
+	// Convert the hash bytes to a hexadecimal string
+	hashString := hex.EncodeToString(hashBytes)
+
+	return hashString
 }

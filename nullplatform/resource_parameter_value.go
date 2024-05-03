@@ -2,6 +2,8 @@ package nullplatform
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"reflect"
@@ -83,7 +85,8 @@ func ParameterValueCreate(d *schema.ResourceData, m any) error {
 		return err
 	}
 
-	d.SetId(strconv.Itoa(paramValue.Id))
+	paramValueId := generateParameterValueID(paramValue)
+	d.SetId(paramValueId)
 
 	return nil
 }
@@ -94,7 +97,6 @@ func ParameterValueRead(d *schema.ResourceData, m any) error {
 	nullOps := m.(NullOps)
 	parameterId := strconv.Itoa(d.Get("parameter_id").(int))
 	parameterValueId := d.Id()
-	parameterValueNewId := d.Get("new_id")
 
 	param, err := nullOps.GetParameter(parameterId)
 	if err != nil {
@@ -118,8 +120,10 @@ func ParameterValueRead(d *schema.ResourceData, m any) error {
 		log.Println(string(jsonData))
 		// -------- DEBUG
 		log.Println("**********************", parameterValueId, strconv.Itoa(item.Id))
-		if parameterValueId == strconv.Itoa(item.Id) || parameterValueNewId == strconv.Itoa(item.Id) {
+
+		if parameterValueId == generateParameterValueID(item) {
 			parameterValue = item
+			break
 		}
 	}
 
@@ -170,6 +174,8 @@ func ParameterValueUpdate(d *schema.ResourceData, m any) error {
 		newParameterValue.Value = d.Get("value").(string)
 	}
 
+	// The ID of the Parameter Value will change if other value is updated
+	// Instead the NRN and Dimensions are composed to generate an ID
 	if !reflect.DeepEqual(*newParameterValue, ParameterValue{}) {
 		newParameterValue.Nrn = d.Get("nrn").(string)
 		// Update the value means creating a new version of it
@@ -186,7 +192,9 @@ func ParameterValueUpdate(d *schema.ResourceData, m any) error {
 		// Print JSON string
 		log.Println("****************", string(jsonData))
 		// -------- DEBUG
-		d.Set("new_id", paramValue.Id)
+		//d.Set("new_id", paramValue.Id)
+		paramValueId := generateParameterValueID(paramValue)
+		d.SetId(paramValueId)
 	}
 
 	return nil
@@ -197,7 +205,44 @@ func ParameterValueDelete(d *schema.ResourceData, m any) error {
 	parameterId := strconv.Itoa(d.Get("parameter_id").(int))
 	parameterValueId := d.Id()
 
-	err := nullOps.DeleteParameterValue(parameterId, parameterValueId)
+	// FIXME: Most of this logic is duplicated in `ParameterValueRead`
+	var parameterValue *ParameterValue
+
+	param, err := nullOps.GetParameter(parameterId)
+	if err != nil {
+		// FIXME: Validate if error == 404
+		/*if !d.IsNewResource() {
+			log.Printf("[WARN] Parameter Value ID %s not found, removing from state", d.Id())
+			d.SetId("")
+			return nil
+		}*/
+		return err
+	}
+
+	for _, item := range param.Values {
+		// -------- DEBUG
+		// Convert struct to JSON
+		jsonData, err := json.Marshal(item)
+		if err != nil {
+			return err
+		}
+		// Print JSON string
+		log.Println(string(jsonData))
+		// -------- DEBUG
+		log.Println("**********************", parameterValueId, strconv.Itoa(item.Id))
+
+		if parameterValueId == generateParameterValueID(item) {
+			parameterValue = item
+			break
+		}
+	}
+
+	if parameterValue == nil {
+		log.Printf("[WARN] Cannot fetch Parameter Value ID %s", parameterValueId)
+		return nil
+	}
+
+	err = nullOps.DeleteParameterValue(parameterId, strconv.Itoa(parameterValue.Id))
 	if err != nil {
 		// FIXME: Validate if error == 404
 		log.Printf("[WARN] Parameter Value ID %s not found, removing from state", parameterValueId)
@@ -208,4 +253,25 @@ func ParameterValueDelete(d *schema.ResourceData, m any) error {
 	d.SetId("")
 
 	return nil
+}
+
+func generateParameterValueID(value *ParameterValue) string {
+	var concatenatedString string
+
+	// Concatenate all key-value pairs from the map
+	for key, value := range value.Dimensions {
+		concatenatedString += key + ":" + value + ";"
+	}
+
+	concatenatedString += value.Nrn + ";"
+
+	// Hash the concatenated string using SHA-256
+	hash := sha256.New()
+	hash.Write([]byte(concatenatedString))
+	hashBytes := hash.Sum(nil)
+
+	// Convert the hash bytes to a hexadecimal string
+	hashString := hex.EncodeToString(hashBytes)
+
+	return hashString
 }

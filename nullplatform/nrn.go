@@ -129,3 +129,31 @@ func (c *NullClient) GetNRN(nrnId string) (*NRN, error) {
 	return s, nil
 
 }
+
+func ParseNrn(nrn, queryParam string) (string, error) {
+	parts := strings.Split(nrn, ":")
+	result := make([]string, 0)
+
+	found := false
+	for _, part := range parts {
+		keyValue := strings.Split(part, "=")
+		if len(keyValue) != 2 {
+			return "", fmt.Errorf("invalid part format: %s", part)
+		}
+		key := keyValue[0]
+
+		if key == queryParam {
+			found = true
+			result = append(result, part)
+			break
+		}
+
+		result = append(result, part)
+	}
+
+	if !found {
+		return "", fmt.Errorf("query parameter '%s' not found", queryParam)
+	}
+
+	return strings.Join(result, ":"), nil
+}

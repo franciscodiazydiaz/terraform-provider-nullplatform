@@ -1,3 +1,10 @@
+locals {
+  dimensions = {
+    "environment" = lower(var.environment),
+    "country"     = "arg"
+  }
+}
+
 resource "nullplatform_scope" "test" {
   scope_name          = "${var.environment}-terraform-test-00"
   null_application_id = var.null_application_id
@@ -13,8 +20,24 @@ resource "nullplatform_scope" "test" {
   capabilities_serverless_runtime_id   = "java11"
   log_group_name                       = "/aws/lambda/test-00"
 
-  dimensions = {
-    "environment" = lower(var.environment),
-    "country"     = "arg"
-  }
+  dimensions = local.dimensions
+}
+
+resource "nullplatform_parameter" "param0" {
+  nrn      = var.null_application_nrn
+  name     = "LOG_LEVEL"
+  variable = "LOG_LEVEL"
+}
+
+resource "nullplatform_parameter_value" "param0_value0" {
+  parameter_id = nullplatform_parameter.param0.id
+  nrn          = nullplatform_scope.test.nrn
+  value        = "DEBUG"
+}
+
+resource "nullplatform_parameter_value" "param0_value1" {
+  parameter_id = nullplatform_parameter.param0.id
+  nrn          = var.null_application_nrn
+  value        = "INFO"
+  dimensions   = local.dimensions
 }

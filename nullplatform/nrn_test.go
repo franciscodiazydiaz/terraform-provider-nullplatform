@@ -13,9 +13,9 @@ func TestParseNrn(t *testing.T) {
 		wantErr    bool
 	}{
 		{"organization=1:account=2:namespace=3:application=4:scope=5", "application", "organization=1:account=2:namespace=3:application=4", false},
-		{"organization=1:account=2:namespace=3", "organization", "organization=885129321", false},
-		{"organization=1:account=2:namespace=3", "namespace", "organization=885129321:account=683868216:namespace=1764294975", false},
-		{"organization=1:account=2:namespace=3", "account", "", true},
+		{"organization=1:account=2:namespace=3", "organization", "organization=1", false},
+		{"organization=1:account=2:namespace=3", "namespace", "organization=1:account=2:namespace=3", false},
+		{"organization=1:account=2:namespace=3", "account", "organization=1:account=2", false},
 		{"", "organization", "", true},
 	}
 

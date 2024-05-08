@@ -67,6 +67,12 @@ func resourceParameter() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
+			"import_if_created": {
+				Type:     schema.TypeBool,
+				Default:  "false",
+				Optional: true,
+				ForceNew: true,
+			},
 		},
 	}
 }
@@ -83,6 +89,7 @@ func ParameterCreate(d *schema.ResourceData, m any) error {
 		DestinationPath: d.Get("destination_path").(string),
 		Secret:          d.Get("secret").(bool),
 		ReadOnly:        d.Get("read_only").(bool),
+		ImportIfCreated: d.Get("import_if_created").(bool),
 	}
 
 	param, err := nullOps.CreateParameter(newParameter)
@@ -192,16 +199,18 @@ func ParameterUpdate(d *schema.ResourceData, m any) error {
 		}
 	}
 
-	return nil //ParameterRead(d, m)
+	return ParameterRead(d, m)
 }
 
 func ParameterDelete(d *schema.ResourceData, m any) error {
 	nullOps := m.(NullOps)
 	parameterId := d.Id()
 
-	err := nullOps.DeleteParameter(parameterId)
-	if err != nil {
-		return err
+	if !d.Get("import_if_created").(bool) {
+		err := nullOps.DeleteParameter(parameterId)
+		if err != nil {
+			return err
+		}
 	}
 
 	d.SetId("")

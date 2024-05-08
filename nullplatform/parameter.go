@@ -37,6 +37,17 @@ type Parameter struct {
 	ReadOnly        bool              `json:"read_only"`
 	Values          []*ParameterValue `json:"values,omitempty"`
 	VersionID       int               `json:"version_id,omitempty"`
+	ImportIfCreated bool              `json:"import_if_created,omitempty"`
+}
+
+type Paging struct {
+	Offset int `json:"offset,omitempty"`
+	Limit  int `json:"limit,omitempty"`
+}
+
+type ParameterList struct {
+	Paging  *Paging      `json:"paging,omitempty"`
+	Results []*Parameter `json:"results,omitempty"`
 }
 
 func (c *NullClient) CreateParameter(param *Parameter) (*Parameter, error) {
@@ -51,6 +62,17 @@ func (c *NullClient) CreateParameter(param *Parameter) (*Parameter, error) {
 	// Print JSON string
 	log.Println(string(jsonData))
 	// -------- DEBUG
+
+	parameterList, err := c.GetParameterList(param.Nrn)
+	if err != nil {
+		return nil, err
+	}
+
+	paramRes, paramExists := parameterExists(parameterList, param)
+	if paramExists && param.ImportIfCreated {
+		log.Printf("[DEBUG] Parameter with Name: %s and Variable: %s already exists, importing ID: %d", paramRes.Name, paramRes.Variable, paramRes.Id)
+		return paramRes, nil
+	}
 
 	var buf bytes.Buffer
 	err = json.NewEncoder(&buf).Encode(*param)
@@ -82,7 +104,7 @@ func (c *NullClient) CreateParameter(param *Parameter) (*Parameter, error) {
 		return nil, fmt.Errorf("Error creating Parameter, status code: %d, message: %s", res.StatusCode, nErr.Message)
 	}
 
-	paramRes := &Parameter{}
+	paramRes = &Parameter{}
 	derr := json.NewDecoder(res.Body).Decode(paramRes)
 
 	if derr != nil {
@@ -267,4 +289,45 @@ func generateParameterValueID(value *ParameterValue) string {
 	hashString := hex.EncodeToString(hashBytes)
 
 	return hashString
+}
+
+func (c *NullClient) GetParameterList(nrn string) (*ParameterList, error) {
+	// TODO: Implement pagination
+	url := fmt.Sprintf("https://%s%s/?nrn=%s&limit=200", c.ApiURL, PARAMETER_PATH, nrn)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
+
+	res, err := c.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	param := &ParameterList{}
+	derr := json.NewDecoder(res.Body).Decode(param)
+
+	if derr != nil {
+		return nil, derr
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Error getting Parameter List, got %d for %s", res.StatusCode, nrn)
+	}
+
+	return param, nil
+}
+
+func parameterExists(parameterList *ParameterList, param *Parameter) (*Parameter, bool) {
+	for _, parameter := range parameterList.Results {
+		if parameter.Name == param.Name && parameter.Variable == param.Variable {
+			return parameter, true
+		}
+	}
+	return nil, false
 }

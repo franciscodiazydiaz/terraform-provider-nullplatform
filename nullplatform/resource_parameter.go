@@ -67,12 +67,13 @@ func resourceParameter() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			/*"import_if_created": {
-				Type:     schema.TypeBool,
-				Default:  "false",
-				Optional: true,
-				ForceNew: true,
-			},*/
+			"import_if_created": {
+				Type:        schema.TypeBool,
+				Default:     "false",
+				Optional:    true,
+				ForceNew:    true,
+				Description: "If `true` avoids raising an error when the Parameter is already created. On terraform destroy the resource won´t be deleted.",
+			},
 		},
 	}
 }
@@ -91,11 +92,14 @@ func ParameterCreate(d *schema.ResourceData, m any) error {
 		ReadOnly:        d.Get("read_only").(bool),
 	}
 
-	param, err := nullOps.CreateParameter(newParameter)
+	importIfCreated := d.Get("import_if_created").(bool)
+	param, err := nullOps.CreateParameter(newParameter, importIfCreated)
 
 	if err != nil {
 		return err
 	}
+
+	d.Set("import_if_created", importIfCreated)
 
 	d.SetId(strconv.Itoa(param.Id))
 
@@ -147,6 +151,13 @@ func ParameterRead(d *schema.ResourceData, m any) error {
 
 	if err := d.Set("read_only", param.ReadOnly); err != nil {
 		return err
+	}
+
+	// Value stored in the state file not returned by the Null API
+	if importIfCreated, ok := d.GetOk("import_if_created"); ok {
+		if err := d.Set("import_if_created", importIfCreated.(bool)); err != nil {
+			return err
+		}
 	}
 
 	return nil

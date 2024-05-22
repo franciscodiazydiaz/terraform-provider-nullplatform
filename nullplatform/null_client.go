@@ -37,7 +37,7 @@ type NullOps interface {
 	PatchNRN(string, *PatchNRN) error
 	GetNRN(string) (*NRN, error)
 
-	CreateParameter(param *Parameter) (*Parameter, error)
+	CreateParameter(param *Parameter, importIfCreated bool) (*Parameter, error)
 	PatchParameter(parameterId string, param *Parameter) error
 	GetParameter(parameterId string) (*Parameter, error)
 	DeleteParameter(parameterId string) error

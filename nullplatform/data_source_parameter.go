@@ -3,7 +3,6 @@ package nullplatform
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -77,19 +76,6 @@ func dataSourceParameterRead(_ context.Context, d *schema.ResourceData, m any) d
 
 	param, err := nullOps.GetParameter(strconv.Itoa(d.Get("id").(int)))
 
-	/*
-		parameterList, err := nullOps.GetParameterList(param.Nrn)
-		if err != nil {
-			return nil, err
-		}
-
-		paramRes, paramExists := parameterExists(parameterList, param)
-		if paramExists && param.ImportIfCreated {
-			log.Printf("[DEBUG] Parameter with Name: %s and Variable: %s already exists, importing ID: %d", paramRes.Name, paramRes.Variable, paramRes.Id)
-			return paramRes, nil
-		}
-	*/
-
 	err = d.Set("name", param.Name)
 	if err != nil {
 		return diag.FromErr(err)
@@ -130,20 +116,7 @@ func dataSourceParameterRead(_ context.Context, d *schema.ResourceData, m any) d
 		return diag.FromErr(err)
 	}
 
-	//fmt.Printf("ResourceData: %+v\n", d)
-
-	// We don't have a unique ID for this data resource so we create one using a
-	// timestamp format. I've seen people use a hash of the returned API data as
-	// a unique key.
-	//
-	// NOTE:
-	// That hashcode helper is no longer available! It has been moved into an
-	// internal directory meaning it's not supposed to be consumed.
-	//
-	// Reference:
-	// https://github.com/hashicorp/terraform-plugin-sdk/blob/master/internal/helper/hashcode/hashcode.go
-	//
-	d.SetId(strconv.FormatInt(time.Now().Unix(), 10))
+	d.SetId(strconv.Itoa(param.Id))
 
 	return nil
 }

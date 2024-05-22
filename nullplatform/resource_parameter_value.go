@@ -78,12 +78,11 @@ func ParameterValueCreate(d *schema.ResourceData, m any) error {
 	}
 
 	paramValue, err := nullOps.CreateParameterValue(parameterId, newParameterValue)
-
-	log.Printf("[DEBUG] Parameter Value Created with OriginID: %d", paramValue.Id)
-
 	if err != nil {
 		return err
 	}
+
+	log.Printf("[DEBUG] Parameter Value Created with OriginID: %d", paramValue.Id)
 
 	paramValueId := generateParameterValueID(paramValue)
 	d.SetId(paramValueId)

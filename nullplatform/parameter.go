@@ -49,7 +49,7 @@ type ParameterList struct {
 	Results []*Parameter `json:"results,omitempty"`
 }
 
-func (c *NullClient) CreateParameter(param *Parameter) (*Parameter, error) {
+func (c *NullClient) CreateParameter(param *Parameter, importIfCreated bool) (*Parameter, error) {
 	url := fmt.Sprintf("https://%s%s", c.ApiURL, PARAMETER_PATH)
 
 	// -------- DEBUG
@@ -61,6 +61,17 @@ func (c *NullClient) CreateParameter(param *Parameter) (*Parameter, error) {
 	// Print JSON string
 	log.Println(string(jsonData))
 	// -------- DEBUG
+
+	parameterList, err := c.GetParameterList(param.Nrn)
+	if err != nil {
+		return nil, err
+	}
+
+	paramRes, paramExists := parameterExists(parameterList, param)
+	if paramExists && importIfCreated {
+		log.Printf("[DEBUG] Parameter with Name: %s and Variable: %s already exists, importing ID: %d", paramRes.Name, paramRes.Variable, paramRes.Id)
+		return paramRes, nil
+	}
 
 	var buf bytes.Buffer
 	err = json.NewEncoder(&buf).Encode(*param)
@@ -92,7 +103,7 @@ func (c *NullClient) CreateParameter(param *Parameter) (*Parameter, error) {
 		return nil, fmt.Errorf("Error creating Parameter, status code: %d, message: %s", res.StatusCode, nErr.Message)
 	}
 
-	paramRes := &Parameter{}
+	paramRes = &Parameter{}
 	derr := json.NewDecoder(res.Body).Decode(paramRes)
 
 	if derr != nil {

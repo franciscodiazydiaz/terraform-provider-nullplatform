@@ -26,24 +26,27 @@ func resourceParameterValue() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"parameter_id": {
-				Type:     schema.TypeInt,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeInt,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The ID of the parameter.",
 			},
 			"origin_version": {
-				Type:     schema.TypeInt,
-				Optional: true,
-				Computed: true,
-				//Default: 0,
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Computed:    true,
+				Description: "Use when you want to create a new value copying the other values from a specific-version (roll back).",
 			},
 			"nrn": {
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				Description: "The NRN of the application or scope to which the value will apply to (when setting dimensions, the NRN must be at app-level).",
 			},
 			"value": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "The content of the value. Can't exceed 2KB for environment variables and 2MB for files.",
 			},
 			"dimensions": {
 				Type:     schema.TypeMap,
@@ -52,6 +55,7 @@ func resourceParameterValue() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				Description: "The dimensions of the value.",
 			},
 		},
 	}

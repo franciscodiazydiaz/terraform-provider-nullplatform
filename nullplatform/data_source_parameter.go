@@ -10,7 +10,7 @@ import (
 
 func dataSourceParameter() *schema.Resource {
 	return &schema.Resource{
-		Description: "Provides information about the Parameter by ID",
+		Description: "Provides information about the Parameter by ID.",
 		ReadContext: dataSourceParameterRead,
 		Schema: map[string]*schema.Schema{
 			"id": {

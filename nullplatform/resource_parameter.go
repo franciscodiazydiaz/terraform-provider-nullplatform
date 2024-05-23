@@ -11,6 +11,8 @@ import (
 
 func resourceParameter() *schema.Resource {
 	return &schema.Resource{
+		Description: "The parameter resource allows you to manage an application parameter.",
+
 		Create: ParameterCreate,
 		Read:   ParameterRead,
 		Update: ParameterUpdate,

@@ -12,6 +12,8 @@ import (
 
 func resourceParameterValue() *schema.Resource {
 	return &schema.Resource{
+		Description: "The parameter value resource allows you to manage an application or scope parameter value.",
+
 		Create: ParameterValueCreate,
 		Read:   ParameterValueRead,
 		Update: ParameterValueUpdate,
@@ -233,7 +235,6 @@ func ParameterValueDelete(d *schema.ResourceData, m any) error {
 		// Print JSON string
 		log.Println(string(jsonData))
 		// -------- DEBUG
-		log.Println("**********************", parameterValueId, strconv.Itoa(item.Id))
 
 		if parameterValueId == generateParameterValueID(item) {
 			parameterValue = item

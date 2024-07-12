@@ -2,11 +2,13 @@ package nullplatform
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"time"
 
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
@@ -22,7 +24,7 @@ type Token struct {
 }
 
 type NullClient struct {
-	Client *http.Client
+	Client *retryablehttp.Client
 	ApiURL string
 	ApiKey string
 	Token  Token
@@ -66,32 +68,65 @@ type NullOps interface {
 	DeleteParameterValue(parameterId string, parameterValueId string) error
 }
 
+func NewNullClient(apiURL, apiKey string, maxRetries int) *NullClient {
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = maxRetries
+	retryClient.RetryWaitMin = 1 * time.Second
+	retryClient.RetryWaitMax = 30 * time.Second
+	retryClient.CheckRetry = customRetryPolicy
+	retryClient.Logger = nil // Disable logging
+
+	return &NullClient{
+		Client: retryClient,
+		ApiURL: apiURL,
+		ApiKey: apiKey,
+	}
+}
+
+func customRetryPolicy(ctx context.Context, resp *http.Response, err error) (bool, error) {
+	// Network error or other errors that resulted in no response
+	if err != nil {
+		return true, err
+	}
+
+	if resp.StatusCode == http.StatusConflict || resp.StatusCode == http.StatusTooManyRequests {
+		return true, nil
+	}
+
+	// Don't retry for other cases
+	return false, nil
+}
+
+func (c *NullClient) MakeRequest(method, path string, body any) (*http.Response, error) {
+	url := fmt.Sprintf("https://%s%s", c.ApiURL, path)
+	req, err := retryablehttp.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
+
+	return c.Client.Do(req)
+}
+
 func (c *NullClient) GetToken() diag.Diagnostics {
 	treq := TokenRequest{
 		Apikey: c.ApiKey,
 	}
 
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(treq)
-
+	jsonBody, err := json.Marshal(treq)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	log.Print("\n\n--- Fetching access token... ---\n\n")
+	url := fmt.Sprintf("https://%s%s", c.ApiURL, TOKEN_PATH)
 
-	r, err := http.NewRequest("POST", fmt.Sprintf("https://%s%s", c.ApiURL, TOKEN_PATH), &buf)
+	// Use the client's Post method directly
+	res, err := c.Client.Post(url, "application/json", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return diag.FromErr(err)
 	}
-
-	r.Header.Add("Content-Type", "application/json")
-
-	res, err := c.Client.Do(r)
-	if err != nil {
-		return diag.FromErr(err)
-	}
-
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
@@ -99,10 +134,9 @@ func (c *NullClient) GetToken() diag.Diagnostics {
 	}
 
 	tRes := &Token{}
-	derr := json.NewDecoder(res.Body).Decode(tRes)
-
-	if derr != nil {
-		return diag.FromErr(derr)
+	err = json.NewDecoder(res.Body).Decode(tRes)
+	if err != nil {
+		return diag.FromErr(err)
 	}
 
 	if tRes.AccessToken == "" {

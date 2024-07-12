@@ -15,9 +15,9 @@ func TestAccResourceParameterValue(t *testing.T) {
 	applicationID := os.Getenv("NULLPLATFORM_APPLICATION_ID")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckParameterDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProviderFactories,
+		CheckDestroy:      testAccCheckParameterDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceParameterValueConfig_basic(applicationID),
@@ -55,9 +55,9 @@ func testAccCheckParameterValueExists(n string, parameterValue *nullplatform.Par
 			return fmt.Errorf("no Parameter Value ID is set")
 		}
 
-		client := testAccProviders["nullplatform"].Meta().(nullplatform.NullOps)
-		if client == nil {
-			return fmt.Errorf("provider meta is nil, ensure the provider is properly configured and initialized")
+		client, err := GetClient(s)
+		if err != nil {
+			return err
 		}
 
 		foundParameterValue, err := client.GetParameterValue(rs.Primary.Attributes["parameter_id"], rs.Primary.ID)
@@ -76,9 +76,9 @@ func testAccCheckParameterValueExists(n string, parameterValue *nullplatform.Par
 }
 
 func testAccCheckParameterValueDestroy(s *terraform.State) error {
-	client := testAccProviders["nullplatform"].Meta().(nullplatform.NullOps)
-	if client == nil {
-		return fmt.Errorf("provider meta is nil, ensure the provider is properly configured and initialized")
+	client, err := GetClient(s)
+	if err != nil {
+		return err
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -185,13 +185,13 @@ resource "nullplatform_scope" "test" {
 	lambda_function_role                      = "arn:aws:iam::123456789012:role/lambda-role"
 	lambda_function_main_alias                = "DEV"
   }
-  
+
   resource "nullplatform_parameter" "parameter" {
 	nrn      = data.nullplatform_application.app.nrn
 	name     = "Log Level"
 	variable = "LOG_LEVEL"
   }
-  
+
   resource "nullplatform_parameter_value" "parameter_value" {
 	parameter_id = nullplatform_parameter.parameter.id
 	nrn          = nullplatform_scope.test.nrn

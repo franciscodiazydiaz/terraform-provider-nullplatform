@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/nullplatform/terraform-provider-nullplatform/nullplatform"
 )
 
 // TestResourceScope_basic tests the basic lifecycle of the Scope resource
@@ -15,9 +14,9 @@ func TestResourceScope(t *testing.T) {
 	applicationID := os.Getenv("NULLPLATFORM_APPLICATION_ID")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckResourceScopeDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProviderFactories,
+		CheckDestroy:      testAccCheckResourceScopeDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccScopeConfig_basic(applicationID),
@@ -25,6 +24,7 @@ func TestResourceScope(t *testing.T) {
 					testAccCheckResourceScopeExists("nullplatform_scope.test"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "scope_name", "acc-test-scope"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "capabilities_serverless_runtime_id", "provided.al2"),
+					resource.TestCheckResourceAttr("nullplatform_scope.test", "capabilities_serverless_runtime_platform", "x86_64"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "capabilities_serverless_handler_name", "handler"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "capabilities_serverless_ephemeral_storage", "512"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "log_group_name", "/aws/lambda/acc-test-lambda"),
@@ -33,6 +33,15 @@ func TestResourceScope(t *testing.T) {
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "lambda_function_role", "arn:aws:iam::123456789012:role/lambda-role"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "lambda_function_main_alias", "DEV"),
 					resource.TestCheckResourceAttr("nullplatform_scope.test", "null_application_id", applicationID),
+				),
+			},
+			{
+				Config: testAccScopeConfig_arm64(applicationID),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckResourceScopeExists("nullplatform_scope.test_arm64"),
+					resource.TestCheckResourceAttr("nullplatform_scope.test_arm64", "scope_name", "acc-test-scope-arm64"),
+					resource.TestCheckResourceAttr("nullplatform_scope.test_arm64", "capabilities_serverless_runtime_id", "provided.al2"),
+					resource.TestCheckResourceAttr("nullplatform_scope.test_arm64", "capabilities_serverless_runtime_platform", "arm_64"),
 				),
 			},
 		},
@@ -55,9 +64,9 @@ func testAccCheckResourceScopeExists(n string) resource.TestCheckFunc {
 }
 
 func testAccCheckResourceScopeDestroy(s *terraform.State) error {
-	client := testAccProviders["nullplatform"].Meta().(nullplatform.NullOps)
-	if client == nil {
-		return fmt.Errorf("provider meta is nil, ensure the provider is properly configured and initialized")
+	client, err := GetClient(s)
+	if err != nil {
+		return err
 	}
 
 	for _, rs := range s.RootModule().Resources {
@@ -80,10 +89,28 @@ resource "nullplatform_scope" "test" {
   null_application_id                       = %s
   scope_name                                = "acc-test-scope"
   capabilities_serverless_runtime_id        = "provided.al2"
+  capabilities_serverless_runtime_platform  = "x86_64"
   capabilities_serverless_handler_name      = "handler"
   capabilities_serverless_timeout           = 10
   capabilities_serverless_memory            = 1024
   capabilities_serverless_ephemeral_storage = 512
+  log_group_name                            = "/aws/lambda/acc-test-lambda"
+  lambda_function_name                      = "acc-test-lambda"
+  lambda_current_function_version           = "1"
+  lambda_function_role                      = "arn:aws:iam::123456789012:role/lambda-role"
+  lambda_function_main_alias                = "DEV"
+}
+`, applicationID)
+}
+
+func testAccScopeConfig_arm64(applicationID string) string {
+	return fmt.Sprintf(`
+resource "nullplatform_scope" "test_arm64" {
+  null_application_id                       = %s
+  scope_name                                = "acc-test-scope-arm64"
+  capabilities_serverless_runtime_id        = "provided.al2"
+  capabilities_serverless_runtime_platform  = "arm_64"
+  capabilities_serverless_handler_name      = "handler"
   log_group_name                            = "/aws/lambda/acc-test-lambda"
   lambda_function_name                      = "acc-test-lambda"
   lambda_current_function_version           = "1"

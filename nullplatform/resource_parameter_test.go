@@ -16,9 +16,9 @@ func TestAccResourceParameter(t *testing.T) {
 	applicationID := os.Getenv("NULLPLATFORM_APPLICATION_ID")
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckParameterDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testAccProviderFactories,
+		CheckDestroy:      testAccCheckParameterDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccResourceParameterConfig_basic(applicationID),
@@ -63,9 +63,9 @@ func testAccCheckParameterExists(n string, parameter *nullplatform.Parameter) re
 			return fmt.Errorf("no Parameter ID is set")
 		}
 
-		client := testAccProviders["nullplatform"].Meta().(nullplatform.NullOps)
-		if client == nil {
-			return fmt.Errorf("provider meta is nil, ensure the provider is properly configured and initialized")
+		client, err := GetClient(s)
+		if err != nil {
+			return err
 		}
 
 		foundParameter, err := client.GetParameter(rs.Primary.ID)
@@ -84,9 +84,9 @@ func testAccCheckParameterExists(n string, parameter *nullplatform.Parameter) re
 }
 
 func testAccCheckParameterDestroy(s *terraform.State) error {
-	client := testAccProviders["nullplatform"].Meta().(nullplatform.NullOps)
-	if client == nil {
-		return fmt.Errorf("provider meta is nil, ensure the provider is properly configured and initialized")
+	client, err := GetClient(s)
+	if err != nil {
+		return err
 	}
 
 	for _, rs := range s.RootModule().Resources {

@@ -2,12 +2,10 @@ package nullplatform
 
 import (
 	"context"
-	"net/http"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/motemen/go-loghttp"
 )
 
 const NP_API_KEY = "np_apikey"
@@ -28,6 +26,11 @@ func Provider() *schema.Provider {
 				DefaultFunc: schema.EnvDefaultFunc("NP_API_HOST", "api.nullplatform.com"),
 				Optional:    true,
 				Description: "Null Platform API HOSTNAME. Can also be set with the `NP_API_HOST` environment variable. If omitted, the default value is `api.nullplatform.com`",
+			},
+			"max_retries": {
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  5,
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
@@ -50,14 +53,9 @@ func Provider() *schema.Provider {
 	provider.ConfigureContextFunc = func(_ context.Context, d *schema.ResourceData) (any, diag.Diagnostics) {
 		apiUrl := strings.Trim(d.Get(NP_API_HOST).(string), "\\")
 		apiKey := d.Get(NP_API_KEY).(string)
+		maxRetries := d.Get("max_retries").(int)
 
-		c := &NullClient{
-			Client: &http.Client{
-				Transport: &loghttp.Transport{},
-			},
-			ApiKey: apiKey,
-			ApiURL: apiUrl,
-		}
+		c := NewNullClient(apiUrl, apiKey, maxRetries)
 
 		diag := c.GetToken()
 

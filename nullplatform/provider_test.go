@@ -1,25 +1,57 @@
 package nullplatform_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/stretchr/testify/require"
 
 	"github.com/nullplatform/terraform-provider-nullplatform/nullplatform"
 )
 
-var testAccProviders map[string]*schema.Provider
+//var testAccProviders map[string]*schema.Provider
 
 func provider() *schema.Provider {
 	return nullplatform.Provider()
 }
 
+/*
 func init() {
 	testAccProviders = map[string]*schema.Provider{
 		"nullplatform": provider(),
 	}
+}*/
+
+var testAccProviderFactories map[string]func() (*schema.Provider, error)
+
+func init() {
+	testAccProviderFactories = map[string]func() (*schema.Provider, error){
+		"nullplatform": func() (*schema.Provider, error) {
+			return provider(), nil
+		},
+	}
+}
+
+func GetClient(s *terraform.State) (nullplatform.NullOps, error) {
+	providerFunc, ok := testAccProviderFactories["nullplatform"]
+	if !ok {
+		return nil, fmt.Errorf("nullplatform provider not found")
+	}
+
+	provider, err := providerFunc()
+	if err != nil {
+		return nil, fmt.Errorf("error getting nullplatform provider: %v", err)
+	}
+
+	client, ok := provider.Meta().(nullplatform.NullOps)
+	if !ok {
+		return nil, fmt.Errorf("failed to get NullOps client from provider metadata")
+	}
+
+	return client, nil
 }
 
 func testAccPreCheck(t *testing.T) {

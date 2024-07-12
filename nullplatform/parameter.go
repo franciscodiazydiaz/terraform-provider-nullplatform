@@ -48,8 +48,6 @@ type ParameterList struct {
 }
 
 func (c *NullClient) CreateParameter(param *Parameter, importIfCreated bool) (*Parameter, error) {
-	url := fmt.Sprintf("https://%s%s", c.ApiURL, PARAMETER_PATH)
-
 	parameterList, err := c.GetParameterList(param.Nrn)
 	if err != nil {
 		return nil, err
@@ -67,15 +65,7 @@ func (c *NullClient) CreateParameter(param *Parameter, importIfCreated bool) (*P
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, &buf)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("POST", PARAMETER_PATH, &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -105,17 +95,9 @@ func (c *NullClient) CreateParameter(param *Parameter, importIfCreated bool) (*P
 }
 
 func (c *NullClient) GetParameter(parameterId string) (*Parameter, error) {
-	url := fmt.Sprintf("https://%s%s/%s", c.ApiURL, PARAMETER_PATH, parameterId)
+	path := fmt.Sprintf("%s/%s", PARAMETER_PATH, parameterId)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +118,7 @@ func (c *NullClient) GetParameter(parameterId string) (*Parameter, error) {
 }
 
 func (c *NullClient) PatchParameter(parameterId string, param *Parameter) error {
-	url := fmt.Sprintf("https://%s%s/%s", c.ApiURL, PARAMETER_PATH, parameterId)
+	path := fmt.Sprintf("%s/%s", PARAMETER_PATH, parameterId)
 
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(*param)
@@ -145,15 +127,7 @@ func (c *NullClient) PatchParameter(parameterId string, param *Parameter) error 
 		return err
 	}
 
-	req, err := http.NewRequest("PATCH", url, &buf)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("PATCH", path, &buf)
 	if err != nil {
 		return err
 	}
@@ -167,17 +141,9 @@ func (c *NullClient) PatchParameter(parameterId string, param *Parameter) error 
 }
 
 func (c *NullClient) DeleteParameter(parameterId string) error {
-	url := fmt.Sprintf("https://%s%s/%s", c.ApiURL, PARAMETER_PATH, parameterId)
+	path := fmt.Sprintf("%s/%s", PARAMETER_PATH, parameterId)
 
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("DELETE", path, nil)
 	if err != nil {
 		return err
 	}
@@ -191,7 +157,7 @@ func (c *NullClient) DeleteParameter(parameterId string) error {
 }
 
 func (c *NullClient) CreateParameterValue(paramId int, paramValue *ParameterValue) (*ParameterValue, error) {
-	url := fmt.Sprintf("https://%s%s/%s/value", c.ApiURL, PARAMETER_PATH, strconv.Itoa(paramId))
+	path := fmt.Sprintf("%s/%s/value", PARAMETER_PATH, strconv.Itoa(paramId))
 
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(*paramValue)
@@ -200,15 +166,7 @@ func (c *NullClient) CreateParameterValue(paramId int, paramValue *ParameterValu
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, &buf)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("POST", path, &buf)
 	if err != nil {
 		return nil, err
 	}
@@ -237,17 +195,9 @@ func (c *NullClient) CreateParameterValue(paramId int, paramValue *ParameterValu
 }
 
 func (c *NullClient) DeleteParameterValue(parameterId string, parameterValueId string) error {
-	url := fmt.Sprintf("https://%s%s/%s/value/%s", c.ApiURL, PARAMETER_PATH, parameterId, parameterValueId)
+	path := fmt.Sprintf("%s/%s/value/%s", PARAMETER_PATH, parameterId, parameterValueId)
 
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("DELETE", path, nil)
 	if err != nil {
 		return err
 	}
@@ -306,17 +256,9 @@ func generateParameterValueID(value *ParameterValue) string {
 
 func (c *NullClient) GetParameterList(nrn string) (*ParameterList, error) {
 	// TODO: Implement pagination
-	url := fmt.Sprintf("https://%s%s/?nrn=%s&limit=200", c.ApiURL, PARAMETER_PATH, nrn)
+	path := fmt.Sprintf("%s/?nrn=%s&limit=200", PARAMETER_PATH, nrn)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.Token.AccessToken))
-
-	res, err := c.Client.Do(req)
+	res, err := c.MakeRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
